@@ -15,7 +15,7 @@ Este é um sistema completo desenvolvido em Flask para gestão de comissões, ba
 1. Certifique-se de ter o Python instalado.
 2. Instale as dependências necessárias:
    ```bash
-   pip install flask flask-sqlalchemy
+   pip install flask flask-sqlalchemy openpyxl
    ```
 3. Execute a aplicação:
    ```bash

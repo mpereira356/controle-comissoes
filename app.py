@@ -1,7 +1,11 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
 from flask_sqlalchemy import SQLAlchemy
-from datetime import datetime
+from datetime import datetime, date
+from io import BytesIO
 import os
+import unicodedata
+
+from openpyxl import load_workbook
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'secret-key-for-commission-control'
@@ -72,10 +76,10 @@ def index():
     comissoes = query.order_by(Comissao.dt_transacao.desc()).all()
     
     # Calcular totais
-    total_valor = sum(c.vr_comissao for c in comissoes)
-    total_pago = sum(c.vr_comissao for c in comissoes if c.status == 'pago')
-    total_pendente = sum(c.vr_comissao for c in comissoes if c.status == 'pendente')
-    total_atrasado = sum(c.vr_comissao for c in comissoes if c.status == 'atrasado')
+    total_valor = sum(c.vl_titulo for c in comissoes)
+    total_pago = sum(c.vl_titulo for c in comissoes if c.status == 'pago')
+    total_pendente = sum(c.vl_titulo for c in comissoes if c.status == 'pendente')
+    total_atrasado = sum(c.vl_titulo for c in comissoes if c.status == 'atrasado')
     
     vendedores = db.session.query(Comissao.vendedor).distinct().all()
     vendedores = [v[0] for v in vendedores]
@@ -143,6 +147,234 @@ def adicionar():
     
     return redirect(url_for('index'))
 
+def _normalize_header(value):
+    if value is None:
+        return ''
+    text = str(value).strip().lower()
+    text = unicodedata.normalize('NFKD', text)
+    text = ''.join(ch for ch in text if not unicodedata.combining(ch))
+    return ''.join(ch for ch in text if ch.isalnum())
+
+def _parse_date(value):
+    if value is None or value == '':
+        return None
+    if isinstance(value, datetime):
+        return value.date()
+    if isinstance(value, date):
+        return value
+    for fmt in ('%d/%m/%Y', '%Y-%m-%d', '%d-%m-%Y'):
+        try:
+            return datetime.strptime(str(value), fmt).date()
+        except ValueError:
+            continue
+    return None
+
+def _parse_float(value):
+    if value is None or value == '':
+        return 0.0
+    if isinstance(value, (int, float)):
+        return float(value)
+    text = str(value).strip().replace('.', '').replace(',', '.')
+    try:
+        return float(text)
+    except ValueError:
+        return 0.0
+
+@app.route('/importar', methods=['POST'])
+def importar():
+    arquivo = request.files.get('arquivo_excel')
+    if not arquivo or arquivo.filename == '':
+        flash('Selecione um arquivo Excel para importar.', 'warning')
+        return redirect(url_for('index'))
+
+    if not arquivo.filename.lower().endswith('.xlsx'):
+        flash('Formato inválido. Envie um arquivo .xlsx.', 'danger')
+        return redirect(url_for('index'))
+
+    try:
+        wb = load_workbook(filename=BytesIO(arquivo.read()), data_only=True)
+        ws = wb.active
+        header_row_index = None
+        header_candidates = {'pedido', 'cliente', 'vendedor', 'dttransacao', 'dtemissao'}
+        for row in ws.iter_rows(min_row=1, max_row=10):
+            normalized = [_normalize_header(cell.value) for cell in row]
+            if len(header_candidates.intersection(set(normalized))) >= 2:
+                header_row_index = row[0].row
+                break
+
+        if not header_row_index:
+            flash('Não foi possível identificar o cabeçalho da planilha.', 'danger')
+            return redirect(url_for('index'))
+
+        headers = {}
+        for idx, cell in enumerate(ws[header_row_index], start=1):
+            headers[_normalize_header(cell.value)] = idx
+
+        field_map = {
+            'unid': ['unid', 'unidade'],
+            'dt_transacao': ['dttransacao', 'datatransacao', 'data_transacao'],
+            'dt_emissao': ['dtemissao', 'dataemissao', 'data_emissao'],
+            'pedido': ['pedido'],
+            'cod_cli': ['codcli', 'codcliente', 'codigo_cliente'],
+            'cliente': ['cliente'],
+            'titulo': ['titulo', 'tituloid'],
+            'parc': ['parc', 'parcela'],
+            'ccusto': ['ccusto', 'centrocusto'],
+            'dt_vencto': ['dtvencto', 'datavencimento', 'vencimento'],
+            'vl_titulo': ['vltitulo', 'vltitulor', 'vltitulors', 'valor_titulo', 'valortitulo'],
+            'vl_orig_titulo': ['vlorigtitulo', 'vlorigtitr', 'valorigtitulo', 'valor_original_titulo', 'vlorigtitrs'],
+            'comissao_venda': ['comissaovenda', 'comissaovenda_rs', 'valorcomissaovendar', 'valorcomissaovendars'],
+            'comissao_servico': ['comissaoservico', 'comissaoservicor', 'comissaoservicors', 'valorcomissaoservicor', 'valorcomissaoservicors'],
+            'pedido_erecta': ['pedidoerecta', 'pedido_interno', 'pedidointerno', 'dev'],
+            'vendedor': ['vendedor'],
+            'base_comissao': ['basecomissao', 'basecomissao_rs', 'basecomissoesr', 'basecomissoesrs'],
+            'percentual': ['percentual', 'perc', 'comissao'],
+            'vr_comissao': ['vrcomissao', 'valorcomissao', 'valor_comissao', 'vrcomissaor', 'vrcomissaors'],
+            'dt_previsao': ['dtprevisao', 'dataprevisao', 'previsao_pagamento', 'previsaodepgto'],
+            'status': ['status', 'situacao'],
+            'obs': ['obs', 'observacao', 'observacoes']
+        }
+
+        col_index = {}
+        for field, aliases in field_map.items():
+            for alias in aliases:
+                if alias in headers:
+                    col_index[field] = headers[alias]
+                    break
+
+        agregados = {}
+        for row_index, row in enumerate(ws.iter_rows(min_row=header_row_index + 1, values_only=True), start=header_row_index + 1):
+            if not any(row):
+                continue
+
+            def cell(field):
+                idx = col_index.get(field)
+                return row[idx - 1] if idx else None
+
+            pedido_erecta = cell('pedido_erecta')
+            pedido_erecta = str(pedido_erecta).strip() if pedido_erecta else ''
+            chave = _normalize_header(pedido_erecta) if pedido_erecta else f'linha_{row_index}'
+
+            registro = agregados.get(chave)
+            if not registro:
+                registro = {
+                    'unid': int(_parse_float(cell('unid')) or 1),
+                    'dt_transacao': _parse_date(cell('dt_transacao')),
+                    'dt_emissao': _parse_date(cell('dt_emissao')),
+                    'pedido': str(cell('pedido')).strip() if cell('pedido') else '',
+                    'cod_cli': str(cell('cod_cli')).strip() if cell('cod_cli') else '',
+                    'cliente': str(cell('cliente')).strip() if cell('cliente') else '',
+                    'titulo': str(cell('titulo')).strip() if cell('titulo') else '',
+                    'parc': int(_parse_float(cell('parc')) or 1),
+                    'ccusto': str(cell('ccusto')).strip() if cell('ccusto') else '',
+                    'dt_vencto': _parse_date(cell('dt_vencto')),
+                    'vl_titulo': _parse_float(cell('vl_titulo')),
+                    'vl_orig_titulo': _parse_float(cell('vl_orig_titulo')),
+                    'comissao_venda': _parse_float(cell('comissao_venda')),
+                    'comissao_servico': _parse_float(cell('comissao_servico')),
+                    'pedido_erecta': pedido_erecta,
+                    'vendedor': str(cell('vendedor')).strip() if cell('vendedor') else '',
+                    'base_comissao': _parse_float(cell('base_comissao')),
+                    'percentual': _parse_float(cell('percentual')) or 10.0,
+                    'vr_comissao': _parse_float(cell('vr_comissao')),
+                    'dt_previsao': _parse_date(cell('dt_previsao')),
+                    'status': str(cell('status')).strip().lower() if cell('status') else '',
+                    'obs': str(cell('obs')).strip() if cell('obs') else ''
+                }
+                agregados[chave] = registro
+            else:
+                for campo in ['vl_titulo', 'vl_orig_titulo', 'comissao_venda', 'comissao_servico', 'base_comissao', 'vr_comissao']:
+                    registro[campo] += _parse_float(cell(campo))
+
+        total_importados = 0
+        total_atualizados = 0
+
+        for registro in agregados.values():
+            if not registro['cliente'] or not registro['vendedor'] or not registro['pedido']:
+                continue
+
+            registro['dt_transacao'] = registro['dt_transacao'] or date.today()
+            registro['dt_emissao'] = registro['dt_emissao'] or date.today()
+
+            if 0 < registro['percentual'] <= 1:
+                registro['percentual'] = registro['percentual'] * 100
+
+            if registro['base_comissao'] == 0.0:
+                registro['base_comissao'] = registro['comissao_venda'] + registro['comissao_servico']
+            if registro['vr_comissao'] == 0.0:
+                registro['vr_comissao'] = registro['base_comissao'] * (registro['percentual'] / 100)
+
+            status = registro['status'] or 'pendente'
+            if status != 'pago' and registro['dt_previsao'] and registro['dt_previsao'] < date.today():
+                status = 'atrasado'
+
+            existentes = []
+            if registro['pedido_erecta']:
+                existentes = Comissao.query.filter_by(pedido_erecta=registro['pedido_erecta']).all()
+
+            if existentes:
+                existente = existentes[0]
+                existente.unid = registro['unid']
+                existente.dt_transacao = registro['dt_transacao']
+                existente.dt_emissao = registro['dt_emissao']
+                existente.pedido = registro['pedido']
+                existente.cod_cli = registro['cod_cli']
+                existente.cliente = registro['cliente']
+                existente.titulo = registro['titulo']
+                existente.parc = registro['parc']
+                existente.ccusto = registro['ccusto']
+                existente.dt_vencto = registro['dt_vencto']
+                existente.vl_titulo = registro['vl_titulo']
+                existente.vl_orig_titulo = registro['vl_orig_titulo']
+                existente.comissao_venda = registro['comissao_venda']
+                existente.comissao_servico = registro['comissao_servico']
+                existente.pedido_erecta = registro['pedido_erecta']
+                existente.vendedor = registro['vendedor']
+                existente.base_comissao = registro['base_comissao']
+                existente.percentual = registro['percentual']
+                existente.vr_comissao = registro['vr_comissao']
+                existente.dt_previsao = registro['dt_previsao']
+                existente.status = status
+                existente.obs = registro['obs']
+                for duplicado in existentes[1:]:
+                    db.session.delete(duplicado)
+                total_atualizados += 1
+            else:
+                nova_comissao = Comissao(
+                    unid=registro['unid'],
+                    dt_transacao=registro['dt_transacao'],
+                    dt_emissao=registro['dt_emissao'],
+                    pedido=registro['pedido'],
+                    cod_cli=registro['cod_cli'],
+                    cliente=registro['cliente'],
+                    titulo=registro['titulo'],
+                    parc=registro['parc'],
+                    ccusto=registro['ccusto'],
+                    dt_vencto=registro['dt_vencto'],
+                    vl_titulo=registro['vl_titulo'],
+                    vl_orig_titulo=registro['vl_orig_titulo'],
+                    comissao_venda=registro['comissao_venda'],
+                    comissao_servico=registro['comissao_servico'],
+                    pedido_erecta=registro['pedido_erecta'],
+                    vendedor=registro['vendedor'],
+                    base_comissao=registro['base_comissao'],
+                    percentual=registro['percentual'],
+                    vr_comissao=registro['vr_comissao'],
+                    dt_previsao=registro['dt_previsao'],
+                    status=status,
+                    obs=registro['obs']
+                )
+                db.session.add(nova_comissao)
+                total_importados += 1
+
+        db.session.commit()
+        flash(f'Importação concluída! {total_importados} novos registros e {total_atualizados} atualizados.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Erro ao importar Excel: {str(e)}', 'danger')
+
+    return redirect(url_for('index'))
+
 @app.route('/marcar_pago/<int:id>')
 def marcar_pago(id):
     comissao = Comissao.query.get_or_404(id)
@@ -157,6 +389,24 @@ def excluir(id):
     db.session.delete(comissao)
     db.session.commit()
     flash('Registro excluído com sucesso!', 'success')
+    return redirect(url_for('index'))
+
+@app.route('/excluir_multiplos', methods=['POST'])
+def excluir_multiplos():
+    ids = request.form.getlist('ids')
+    if not ids:
+        flash('Selecione pelo menos um registro para excluir.', 'warning')
+        return redirect(url_for('index'))
+
+    try:
+        ids_int = [int(i) for i in ids]
+        Comissao.query.filter(Comissao.id.in_(ids_int)).delete(synchronize_session=False)
+        db.session.commit()
+        flash(f'{len(ids_int)} registro(s) excluído(s) com sucesso!', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Erro ao excluir registros: {str(e)}', 'danger')
+
     return redirect(url_for('index'))
 
 @app.route('/detalhes/<int:id>')

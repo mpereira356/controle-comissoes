@@ -41,6 +41,17 @@
 
 <!-- Filtros -->
 <div class="filtro-container">
+    <form action="{{ url_for('importar') }}" method="POST" enctype="multipart/form-data" class="row g-3 mb-3">
+        <div class="col-md-8">
+            <label class="form-label">Importar Excel</label>
+            <input type="file" name="arquivo_excel" class="form-control" accept=".xlsx" required>
+        </div>
+        <div class="col-md-4 d-flex align-items-end">
+            <button type="submit" class="btn btn-success w-100">
+                <i class="bi bi-upload me-1"></i>Importar Arquivo
+            </button>
+        </div>
+    </form>
     <form action="{{ url_for('index') }}" method="GET" class="row g-3">
         <div class="col-md-3">
             <label class="form-label">Vendedor</label>
@@ -73,19 +84,29 @@
 </div>
 
 <!-- Tabela -->
+<form action="{{ url_for('excluir_multiplos') }}" method="POST" id="bulkDeleteForm" onsubmit="return confirm('Tem certeza que deseja excluir os registros selecionados?')">
 <div class="card">
     <div class="card-header d-flex justify-content-between align-items-center">
         <span><i class="bi bi-list-ul me-2"></i>Registros de Comissões</span>
-        <span class="badge bg-secondary">{{ comissoes|length }} registros</span>
+        <div class="d-flex align-items-center gap-2">
+            <button type="submit" class="btn btn-sm btn-outline-danger" id="bulkDeleteBtn" disabled>
+                <i class="bi bi-trash me-1"></i>Excluir Selecionados
+            </button>
+            <span class="badge bg-secondary">{{ comissoes|length }} registros</span>
+        </div>
     </div>
     <div class="card-body p-0">
         <div class="table-responsive">
             <table class="table table-hover align-middle mb-0">
                 <thead>
                     <tr>
+                        <th class="ps-4">
+                            <input type="checkbox" id="checkAll" class="form-check-input">
+                        </th>
                         <th class="ps-4">Data</th>
                         <th>Cliente</th>
                         <th>Pedido</th>
+                        <th>Pedido Interno (DEV)</th>
                         <th>Vendedor</th>
                         <th>Valor (R$)</th>
                         <th>Status</th>
@@ -95,14 +116,18 @@
                 <tbody>
                     {% for c in comissoes %}
                     <tr>
+                        <td class="ps-4">
+                            <input type="checkbox" name="ids" value="{{ c.id }}" class="form-check-input row-check">
+                        </td>
                         <td class="ps-4">{{ c.dt_transacao.strftime('%d/%m/%Y') }}</td>
                         <td>
                             <div class="fw-bold text-dark">{{ c.cliente[:40] }}{% if c.cliente|length > 40 %}...{% endif %}</div>
                             <small class="text-muted">Pedido: {{ c.pedido }}</small>
                         </td>
                         <td>{{ c.pedido }}</td>
+                        <td>{{ c.pedido_erecta or '-' }}</td>
                         <td><span class="badge badge-vendedor">{{ c.vendedor }}</span></td>
-                        <td class="fw-bold">R$ {{ "{:,.2f}".format(c.vr_comissao).replace(',', 'X').replace('.', ',').replace('X', '.') }}</td>
+                        <td class="fw-bold">R$ {{ "{:,.2f}".format(c.vl_titulo).replace(',', 'X').replace('.', ',').replace('X', '.') }}</td>
                         <td>
                             <span class="status-badge status-{{ c.status }}">
                                 {{ c.status|capitalize }}
@@ -110,7 +135,7 @@
                         </td>
                         <td class="text-end pe-4">
                             <div class="btn-group">
-                                <button class="btn btn-sm btn-outline-secondary" onclick="verDetalhes({{ c.id }})" title="Detalhes">
+                                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="verDetalhes({{ c.id }})" title="Detalhes">
                                     <i class="bi bi-eye"></i>
                                 </button>
                                 {% if c.status != 'pago' %}
@@ -130,6 +155,7 @@
         </div>
     </div>
 </div>
+</form>
 
 <!-- Modal Adicionar -->
 <div class="modal fade" id="modalAdicionar" tabindex="-1">
@@ -165,6 +191,10 @@
                         <div class="col-md-3">
                             <label class="form-label">Pedido</label>
                             <input type="text" name="pedido" class="form-control" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Pedido Interno (DEV)</label>
+                            <input type="text" name="pedido_erecta" class="form-control">
                         </div>
                         <div class="col-md-4">
                             <label class="form-label">Vendedor</label>
@@ -239,6 +269,10 @@ function verDetalhes(id) {
                         <span>${data.pedido}</span>
                     </div>
                     <div class="list-group-item d-flex justify-content-between">
+                        <span class="text-muted">Pedido Interno (DEV):</span>
+                        <span>${data.pedido_erecta || '-'}</span>
+                    </div>
+                    <div class="list-group-item d-flex justify-content-between">
                         <span class="text-muted">Vendedor:</span>
                         <span class="badge badge-vendedor">${data.vendedor}</span>
                     </div>
@@ -253,6 +287,10 @@ function verDetalhes(id) {
                     <div class="list-group-item d-flex justify-content-between">
                         <span class="text-muted">Base Comissão:</span>
                         <span class="fw-bold">R$ ${data.base_comissao.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</span>
+                    </div>
+                    <div class="list-group-item d-flex justify-content-between">
+                        <span class="text-muted">Valor Título:</span>
+                        <span class="fw-bold">R$ ${data.vl_titulo.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</span>
                     </div>
                     <div class="list-group-item d-flex justify-content-between">
                         <span class="text-muted">Valor Comissão (${data.percentual}%):</span>
@@ -278,6 +316,27 @@ document.addEventListener('DOMContentLoaded', function() {
     document.querySelectorAll('input[type="date"]').forEach(input => {
         if (!input.value) input.value = hoje;
     });
+
+    const checkAll = document.getElementById('checkAll');
+    const rowChecks = document.querySelectorAll('.row-check');
+    const bulkBtn = document.getElementById('bulkDeleteBtn');
+
+    function updateBulkState() {
+        const anyChecked = Array.from(rowChecks).some(cb => cb.checked);
+        const allChecked = rowChecks.length > 0 && Array.from(rowChecks).every(cb => cb.checked);
+        if (bulkBtn) bulkBtn.disabled = !anyChecked;
+        if (checkAll) checkAll.checked = allChecked;
+    }
+
+    if (checkAll) {
+        checkAll.addEventListener('change', function() {
+            rowChecks.forEach(cb => cb.checked = checkAll.checked);
+            updateBulkState();
+        });
+    }
+
+    rowChecks.forEach(cb => cb.addEventListener('change', updateBulkState));
+    updateBulkState();
 });
 </script>
 {% endblock %}
