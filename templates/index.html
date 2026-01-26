@@ -1,0 +1,283 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard - Controle de Comissões{% endblock %}
+
+{% block content %}
+<!-- Cards de Resumo -->
+<div class="row mb-4">
+    <div class="col-md-3 mb-3">
+        <div class="card total-card h-100">
+            <div class="card-body d-flex flex-column justify-content-center">
+                <h5><i class="bi bi-cash-stack me-2"></i>Total Geral</h5>
+                <h3>R$ {{ "{:,.2f}".format(total_valor).replace(',', 'X').replace('.', ',').replace('X', '.') }}</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card h-100 border-start border-success border-4">
+            <div class="card-body">
+                <h5 class="text-muted small text-uppercase fw-bold">Pagas</h5>
+                <h3 class="text-success">R$ {{ "{:,.2f}".format(total_pago).replace(',', 'X').replace('.', ',').replace('X', '.') }}</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card h-100 border-start border-warning border-4">
+            <div class="card-body">
+                <h5 class="text-muted small text-uppercase fw-bold">Pendentes</h5>
+                <h3 class="text-warning">R$ {{ "{:,.2f}".format(total_pendente).replace(',', 'X').replace('.', ',').replace('X', '.') }}</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card h-100 border-start border-danger border-4">
+            <div class="card-body">
+                <h5 class="text-muted small text-uppercase fw-bold">Atrasadas</h5>
+                <h3 class="text-danger">R$ {{ "{:,.2f}".format(total_atrasado).replace(',', 'X').replace('.', ',').replace('X', '.') }}</h3>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Filtros -->
+<div class="filtro-container">
+    <form action="{{ url_for('index') }}" method="GET" class="row g-3">
+        <div class="col-md-3">
+            <label class="form-label">Vendedor</label>
+            <select name="vendedor" class="form-select">
+                <option value="todos">Todos</option>
+                {% for v in vendedores %}
+                <option value="{{ v }}" {% if filtros.vendedor == v %}selected{% endif %}>{{ v }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label">Status</label>
+            <select name="status" class="form-select">
+                <option value="todos">Todos</option>
+                <option value="pago" {% if filtros.status == 'pago' %}selected{% endif %}>Pago</option>
+                <option value="pendente" {% if filtros.status == 'pendente' %}selected{% endif %}>Pendente</option>
+                <option value="atrasado" {% if filtros.status == 'atrasado' %}selected{% endif %}>Atrasado</option>
+            </select>
+        </div>
+        <div class="col-md-4">
+            <label class="form-label">Cliente</label>
+            <input type="text" name="cliente" class="form-control" placeholder="Nome do cliente..." value="{{ filtros.cliente }}">
+        </div>
+        <div class="col-md-2 d-flex align-items-end">
+            <button type="submit" class="btn btn-primary w-100">
+                <i class="bi bi-search me-1"></i>Filtrar
+            </button>
+        </div>
+    </form>
+</div>
+
+<!-- Tabela -->
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-list-ul me-2"></i>Registros de Comissões</span>
+        <span class="badge bg-secondary">{{ comissoes|length }} registros</span>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th class="ps-4">Data</th>
+                        <th>Cliente</th>
+                        <th>Pedido</th>
+                        <th>Vendedor</th>
+                        <th>Valor (R$)</th>
+                        <th>Status</th>
+                        <th class="text-end pe-4">Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for c in comissoes %}
+                    <tr>
+                        <td class="ps-4">{{ c.dt_transacao.strftime('%d/%m/%Y') }}</td>
+                        <td>
+                            <div class="fw-bold text-dark">{{ c.cliente[:40] }}{% if c.cliente|length > 40 %}...{% endif %}</div>
+                            <small class="text-muted">Pedido: {{ c.pedido }}</small>
+                        </td>
+                        <td>{{ c.pedido }}</td>
+                        <td><span class="badge badge-vendedor">{{ c.vendedor }}</span></td>
+                        <td class="fw-bold">R$ {{ "{:,.2f}".format(c.vr_comissao).replace(',', 'X').replace('.', ',').replace('X', '.') }}</td>
+                        <td>
+                            <span class="status-badge status-{{ c.status }}">
+                                {{ c.status|capitalize }}
+                            </span>
+                        </td>
+                        <td class="text-end pe-4">
+                            <div class="btn-group">
+                                <button class="btn btn-sm btn-outline-secondary" onclick="verDetalhes({{ c.id }})" title="Detalhes">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                                {% if c.status != 'pago' %}
+                                <a href="{{ url_for('marcar_pago', id=c.id) }}" class="btn btn-sm btn-outline-success" title="Marcar Pago">
+                                    <i class="bi bi-check-lg"></i>
+                                </a>
+                                {% endif %}
+                                <a href="{{ url_for('excluir', id=c.id) }}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Tem certeza que deseja excluir?')" title="Excluir">
+                                    <i class="bi bi-trash"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Adicionar -->
+<div class="modal fade" id="modalAdicionar" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold"><i class="bi bi-plus-circle me-2"></i>Novo Registro de Comissão</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="{{ url_for('adicionar') }}" method="POST">
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label">Data Transação</label>
+                            <input type="date" name="dt_transacao" class="form-control" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Data Emissão</label>
+                            <input type="date" name="dt_emissao" class="form-control" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Data Vencimento</label>
+                            <input type="date" name="dt_vencto" class="form-control" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Cliente</label>
+                            <input type="text" name="cliente" class="form-control" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Cód. Cliente</label>
+                            <input type="text" name="cod_cli" class="form-control">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Pedido</label>
+                            <input type="text" name="pedido" class="form-control" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Vendedor</label>
+                            <input type="text" name="vendedor" class="form-control" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Comissão Venda (R$)</label>
+                            <input type="number" step="0.01" name="comissao_venda" class="form-control" value="0">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Comissão Serviço (R$)</label>
+                            <input type="number" step="0.01" name="comissao_servico" class="form-control" value="0">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Percentual (%)</label>
+                            <input type="number" step="0.1" name="percentual" class="form-control" value="10">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Previsão Pagamento</label>
+                            <input type="date" name="dt_previsao" class="form-control" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Valor Título (R$)</label>
+                            <input type="number" step="0.01" name="vl_titulo" class="form-control" value="0">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Observações</label>
+                            <textarea name="obs" class="form-control" rows="2"></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Salvar Registro</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Detalhes -->
+<div class="modal fade" id="modalDetalhes" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold">Detalhes da Comissão</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="conteudoDetalhes">
+                <!-- Preenchido via JS -->
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function verDetalhes(id) {
+    fetch(`/detalhes/${id}`)
+        .then(response => response.json())
+        .then(data => {
+            const conteudo = document.getElementById('conteudoDetalhes');
+            conteudo.innerHTML = `
+                <div class="list-group list-group-flush">
+                    <div class="list-group-item d-flex justify-content-between">
+                        <span class="text-muted">Cliente:</span>
+                        <span class="fw-bold">${data.cliente}</span>
+                    </div>
+                    <div class="list-group-item d-flex justify-content-between">
+                        <span class="text-muted">Pedido:</span>
+                        <span>${data.pedido}</span>
+                    </div>
+                    <div class="list-group-item d-flex justify-content-between">
+                        <span class="text-muted">Vendedor:</span>
+                        <span class="badge badge-vendedor">${data.vendedor}</span>
+                    </div>
+                    <div class="list-group-item d-flex justify-content-between">
+                        <span class="text-muted">Data Transação:</span>
+                        <span>${data.dt_transacao}</span>
+                    </div>
+                    <div class="list-group-item d-flex justify-content-between">
+                        <span class="text-muted">Previsão Pagamento:</span>
+                        <span>${data.dt_previsao}</span>
+                    </div>
+                    <div class="list-group-item d-flex justify-content-between">
+                        <span class="text-muted">Base Comissão:</span>
+                        <span class="fw-bold">R$ ${data.base_comissao.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</span>
+                    </div>
+                    <div class="list-group-item d-flex justify-content-between">
+                        <span class="text-muted">Valor Comissão (${data.percentual}%):</span>
+                        <span class="fw-bold text-primary">R$ ${data.vr_comissao.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</span>
+                    </div>
+                    <div class="list-group-item d-flex justify-content-between">
+                        <span class="text-muted">Status:</span>
+                        <span class="status-badge status-${data.status}">${data.status.toUpperCase()}</span>
+                    </div>
+                    <div class="list-group-item">
+                        <span class="text-muted d-block mb-1">Observações:</span>
+                        <p class="mb-0 small">${data.obs || 'Nenhuma observação.'}</p>
+                    </div>
+                </div>
+            `;
+            new bootstrap.Modal(document.getElementById('modalDetalhes')).show();
+        });
+}
+
+// Definir datas padrão no modal de adição
+document.addEventListener('DOMContentLoaded', function() {
+    const hoje = new Date().toISOString().split('T')[0];
+    document.querySelectorAll('input[type="date"]').forEach(input => {
+        if (!input.value) input.value = hoje;
+    });
+});
+</script>
+{% endblock %}

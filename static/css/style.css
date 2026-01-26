@@ -1,0 +1,137 @@
+:root {
+    --primary-color: #1e293b;
+    --secondary-color: #3b82f6;
+    --success-color: #10b981;
+    --warning-color: #f59e0b;
+    --danger-color: #ef4444;
+    --bg-light: #f8fafc;
+}
+
+body {
+    background-color: var(--bg-light);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    color: #334155;
+}
+
+.navbar {
+    background-color: var(--primary-color);
+    padding: 1rem 0;
+}
+
+.navbar-brand {
+    font-weight: 700;
+    letter-spacing: -0.5px;
+}
+
+.card {
+    border: none;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06);
+    transition: transform 0.2s ease;
+}
+
+.card-header {
+    background-color: white;
+    border-bottom: 1px solid #f1f5f9;
+    font-weight: 600;
+    padding: 1.25rem;
+    border-radius: 12px 12px 0 0 !important;
+}
+
+.total-card {
+    background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+    color: white;
+}
+
+.total-card h5 {
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    opacity: 0.8;
+}
+
+.total-card h3 {
+    font-weight: 800;
+    margin-bottom: 0;
+}
+
+.status-badge {
+    padding: 0.35em 0.65em;
+    font-size: 0.75em;
+    font-weight: 700;
+    border-radius: 50rem;
+}
+
+.status-pago { background-color: #dcfce7; color: #166534; }
+.status-pendente { background-color: #fef3c7; color: #92400e; }
+.status-atrasado { background-color: #fee2e2; color: #991b1b; }
+
+.table th {
+    background-color: #f8fafc;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    letter-spacing: 0.05em;
+    color: #64748b;
+    border-top: none;
+}
+
+.btn-primary {
+    background-color: var(--secondary-color);
+    border: none;
+    font-weight: 500;
+    padding: 0.5rem 1.25rem;
+}
+
+.btn-primary:hover {
+    background-color: #2563eb;
+}
+
+.filtro-container {
+    background-color: white;
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+
+.form-label {
+    font-weight: 500;
+    font-size: 0.875rem;
+    color: #475569;
+}
+
+.form-control, .form-select {
+    border-color: #e2e8f0;
+    padding: 0.6rem 0.75rem;
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: var(--secondary-color);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.badge-vendedor {
+    background-color: #eff6ff;
+    color: #1e40af;
+    font-weight: 600;
+}
+
+.table-hover tbody tr:hover {
+    background-color: #f1f5f9;
+}
+
+.modal-content {
+    border: none;
+    border-radius: 16px;
+}
+
+.modal-header {
+    border-bottom: 1px solid #f1f5f9;
+    padding: 1.5rem;
+}
+
+.modal-footer {
+    border-top: 1px solid #f1f5f9;
+    padding: 1.25rem;
+}
