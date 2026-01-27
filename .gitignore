@@ -4,6 +4,9 @@ venv/
 
 # Banco de dados local
 instance/*.db
+*.db
+*.sqlite
+*.sqlite3
 
 # Cache Python
 __pycache__/
