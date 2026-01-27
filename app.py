@@ -181,6 +181,13 @@ def _parse_float(value):
     except ValueError:
         return 0.0
 
+@app.template_filter('dev_short_year')
+def dev_short_year(value):
+    if not value:
+        return ''
+    text = str(value)
+    return re.sub(r'(?<!\\d)20(\\d{2})(?!\\d)', r'\\1', text)
+
 @app.route('/importar', methods=['POST'])
 def importar():
     arquivo = request.files.get('arquivo_excel')
@@ -235,13 +242,6 @@ def importar():
             'status': ['status', 'situacao'],
             'obs': ['obs', 'observacao', 'observacoes']
         }
-
-@app.template_filter('dev_short_year')
-def dev_short_year(value):
-    if not value:
-        return ''
-    text = str(value)
-    return re.sub(r'(?<!\\d)20(\\d{2})(?!\\d)', r'\\1', text)
 
         col_index = {}
         for field, aliases in field_map.items():
