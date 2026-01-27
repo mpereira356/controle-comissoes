@@ -73,7 +73,7 @@ def index():
     if cliente_filtro:
         query = query.filter(Comissao.cliente.ilike(f'%{cliente_filtro}%'))
 
-    comissoes = query.order_by(Comissao.dt_transacao.desc()).all()
+    comissoes = query.order_by(Comissao.pedido_erecta.asc(), Comissao.dt_transacao.desc()).all()
     
     # Calcular totais
     total_valor = sum(c.vl_titulo for c in comissoes)
@@ -282,9 +282,9 @@ def importar():
                     'obs': str(cell('obs')).strip() if cell('obs') else ''
                 }
                 agregados[chave] = registro
+            # Ignorar duplicados do mesmo Pedido Interno (DEV) sem somar valores.
             else:
-                for campo in ['vl_titulo', 'vl_orig_titulo', 'comissao_venda', 'comissao_servico', 'base_comissao', 'vr_comissao']:
-                    registro[campo] += _parse_float(cell(campo))
+                continue
 
         total_importados = 0
         total_atualizados = 0
