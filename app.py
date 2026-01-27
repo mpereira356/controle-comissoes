@@ -2,6 +2,7 @@ from flask import Flask, render_template, request, redirect, url_for, flash, jso
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime, date
 from io import BytesIO
+import re
 import os
 import unicodedata
 
@@ -73,7 +74,7 @@ def index():
     if cliente_filtro:
         query = query.filter(Comissao.cliente.ilike(f'%{cliente_filtro}%'))
 
-    comissoes = query.order_by(Comissao.pedido_erecta.asc(), Comissao.dt_transacao.desc()).all()
+    comissoes = query.order_by(Comissao.id.asc()).all()
     
     # Calcular totais
     total_valor = sum(c.vl_titulo for c in comissoes)
@@ -234,6 +235,13 @@ def importar():
             'status': ['status', 'situacao'],
             'obs': ['obs', 'observacao', 'observacoes']
         }
+
+@app.template_filter('dev_short_year')
+def dev_short_year(value):
+    if not value:
+        return ''
+    text = str(value)
+    return re.sub(r'(?<!\\d)20(\\d{2})(?!\\d)', r'\\1', text)
 
         col_index = {}
         for field, aliases in field_map.items():

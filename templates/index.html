@@ -80,6 +80,11 @@
                 <i class="bi bi-search me-1"></i>Filtrar
             </button>
         </div>
+        <div class="col-md-1 d-flex align-items-end">
+            <a href="{{ url_for('index') }}" class="btn btn-outline-secondary w-100" title="Limpar filtros">
+                <i class="bi bi-x-lg"></i>
+            </a>
+        </div>
     </form>
 </div>
 
@@ -125,7 +130,7 @@
                             <small class="text-muted">Pedido: {{ c.pedido }}</small>
                         </td>
                         <td>{{ c.pedido }}</td>
-                        <td>{{ c.pedido_erecta or '-' }}</td>
+                        <td>{{ (c.pedido_erecta|dev_short_year) or '-' }}</td>
                         <td><span class="badge badge-vendedor">{{ c.vendedor }}</span></td>
                         <td class="fw-bold">R$ {{ "{:,.2f}".format(c.vl_titulo).replace(',', 'X').replace('.', ',').replace('X', '.') }}</td>
                         <td>
@@ -253,6 +258,11 @@
 
 {% block scripts %}
 <script>
+function shortDevYear(value) {
+    if (!value) return '';
+    return String(value).replace(/(^|\D)20(\d{2})(?!\d)/g, '$1$2');
+}
+
 function verDetalhes(id) {
     fetch(`/detalhes/${id}`)
         .then(response => response.json())
@@ -270,7 +280,7 @@ function verDetalhes(id) {
                     </div>
                     <div class="list-group-item d-flex justify-content-between">
                         <span class="text-muted">Pedido Interno (DEV):</span>
-                        <span>${data.pedido_erecta || '-'}</span>
+                        <span>${shortDevYear(data.pedido_erecta) || '-'}</span>
                     </div>
                     <div class="list-group-item d-flex justify-content-between">
                         <span class="text-muted">Vendedor:</span>
