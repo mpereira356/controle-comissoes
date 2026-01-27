@@ -75,13 +75,15 @@
             <label class="form-label">Cliente</label>
             <input type="text" name="cliente" class="form-control" placeholder="Nome do cliente..." value="{{ filtros.cliente }}">
         </div>
-        <div class="col-md-2 d-flex align-items-end gap-2">
-            <button type="submit" class="btn btn-primary btn-sm px-3">
-                <i class="bi bi-search me-1"></i>Filtrar
-            </button>
-            <a href="{{ url_for('index') }}" class="btn btn-outline-secondary btn-sm px-2" title="Limpar filtros">
-                <i class="bi bi-x-lg"></i>
-            </a>
+        <div class="col-md-auto d-flex align-items-end">
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-primary btn-sm px-3">
+                    <i class="bi bi-search me-1"></i>Filtrar
+                </button>
+                <a href="{{ url_for('index') }}" class="btn btn-outline-secondary btn-sm px-2" title="Limpar filtros" aria-label="Limpar filtros">
+                    <i class="bi bi-x-lg"></i>
+                </a>
+            </div>
         </div>
     </form>
 </div>
