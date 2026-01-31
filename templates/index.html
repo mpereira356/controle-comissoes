@@ -299,7 +299,7 @@ function shortDevYear(value) {
 }
 
 function verDetalhes(id) {
-    fetch(`/detalhes/${id}`)
+    fetch(`/detalhes/${id}?_=${Date.now()}`, { cache: 'no-store' })
         .then(response => response.json())
         .then(data => {
             const conteudo = document.getElementById('conteudoDetalhes');
@@ -356,7 +356,7 @@ function verDetalhes(id) {
 }
 
 function editarComissao(id) {
-    fetch(`/detalhes/${id}`)
+    fetch(`/detalhes/${id}?_=${Date.now()}`, { cache: 'no-store' })
         .then(response => response.json())
         .then(data => {
             const form = document.getElementById('formEditar');
