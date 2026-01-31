@@ -391,6 +391,24 @@ def marcar_pago(id):
     flash('Comissão marcada como paga!', 'success')
     return redirect(url_for('index'))
 
+@app.route('/editar/<int:id>', methods=['POST'])
+def editar(id):
+    comissao = Comissao.query.get_or_404(id)
+    try:
+        status = request.form.get('status')
+        obs = request.form.get('obs')
+
+        if status:
+            comissao.status = status
+        comissao.obs = obs
+
+        db.session.commit()
+        flash('Comissão atualizada com sucesso!', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Erro ao atualizar comissão: {str(e)}', 'danger')
+    return redirect(url_for('index'))
+
 @app.route('/excluir/<int:id>')
 def excluir(id):
     comissao = Comissao.query.get_or_404(id)

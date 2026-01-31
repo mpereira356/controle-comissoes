@@ -143,6 +143,9 @@
                                 <button type="button" class="btn btn-sm btn-outline-secondary" onclick="verDetalhes({{ c.id }})" title="Detalhes">
                                     <i class="bi bi-eye"></i>
                                 </button>
+                                <button class="btn btn-sm btn-outline-primary" onclick="editarComissao({{ c.id }})" title="Editar">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
                                 {% if c.status != 'pago' %}
                                 <a href="{{ url_for('marcar_pago', id=c.id) }}" class="btn btn-sm btn-outline-success" title="Marcar Pago">
                                     <i class="bi bi-check-lg"></i>
@@ -254,6 +257,38 @@
         </div>
     </div>
 </div>
+
+<!-- Modal Editar -->
+<div class="modal fade" id="modalEditar" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold">Editar Comissão</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="formEditar" method="POST">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Status</label>
+                        <select name="status" id="editarStatus" class="form-select">
+                            <option value="pago">Pago</option>
+                            <option value="pendente">Pendente</option>
+                            <option value="atrasado">Atrasado</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Observações</label>
+                        <textarea name="obs" id="editarObs" class="form-control" rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Salvar Alterações</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
@@ -317,6 +352,23 @@ function verDetalhes(id) {
                 </div>
             `;
             new bootstrap.Modal(document.getElementById('modalDetalhes')).show();
+        });
+}
+
+function editarComissao(id) {
+    fetch(`/detalhes/${id}`)
+        .then(response => response.json())
+        .then(data => {
+            const form = document.getElementById('formEditar');
+            form.action = `/editar/${id}`;
+
+            const statusSelect = document.getElementById('editarStatus');
+            const obsInput = document.getElementById('editarObs');
+
+            statusSelect.value = data.status || 'pendente';
+            obsInput.value = data.obs || '';
+
+            new bootstrap.Modal(document.getElementById('modalEditar')).show();
         });
 }
 
