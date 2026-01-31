@@ -397,10 +397,13 @@ def editar(id):
     try:
         status = request.form.get('status')
         obs = request.form.get('obs')
+        if obs is None:
+            obs = request.form.get('observacao') or request.form.get('observacoes')
 
         if status:
             comissao.status = status
-        comissao.obs = obs
+        if obs is not None:
+            comissao.obs = obs.strip()
 
         db.session.commit()
         flash('Comissão atualizada com sucesso!', 'success')
