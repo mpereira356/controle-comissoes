@@ -69,7 +69,9 @@ def index():
         query = query.filter(Comissao.vendedor == vendedor_filtro)
     
     if status_filtro != 'todos':
-        query = query.filter(Comissao.status == status_filtro)
+        status_normalizado = _normalize_status(status_filtro)
+        if status_normalizado:
+            query = query.filter(Comissao.status == status_normalizado)
     
     if cliente_filtro:
         query = query.filter(Comissao.cliente.ilike(f'%{cliente_filtro}%'))
@@ -180,6 +182,27 @@ def _parse_float(value):
         return float(text)
     except ValueError:
         return 0.0
+
+def _normalize_status(value):
+    if not value:
+        return None
+    text = str(value).strip().lower()
+    aliases = {
+        'ganha': 'pago',
+        'ganho': 'pago',
+        'paga': 'pago',
+        'pago': 'pago',
+        'vencida': 'atrasado',
+        'vencido': 'atrasado',
+        'atrasada': 'atrasado',
+        'atrasado': 'atrasado',
+        'pendente': 'pendente',
+        'aberta': 'pendente',
+        'emaberto': 'pendente',
+        'em_aberto': 'pendente'
+    }
+    normalized = _normalize_header(text)
+    return aliases.get(normalized, text)
 
 @app.template_filter('dev_short_year')
 def dev_short_year(value):
@@ -312,7 +335,7 @@ def importar():
             if registro['vr_comissao'] == 0.0:
                 registro['vr_comissao'] = registro['base_comissao'] * (registro['percentual'] / 100)
 
-            status = registro['status'] or 'pendente'
+            status = _normalize_status(registro['status']) or 'pendente'
             if status != 'pago' and registro['dt_previsao'] and registro['dt_previsao'] < date.today():
                 status = 'atrasado'
 
@@ -395,7 +418,7 @@ def marcar_pago(id):
 def editar(id):
     comissao = Comissao.query.get_or_404(id)
     try:
-        status = request.form.get('status')
+        status = _normalize_status(request.form.get('status'))
         obs = request.form.get('obs')
         if obs is None:
             obs = request.form.get('observacao') or request.form.get('observacoes')

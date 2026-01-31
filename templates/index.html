@@ -115,6 +115,7 @@
                         <th>Vendedor</th>
                         <th>Valor (R$)</th>
                         <th>Status</th>
+                        <th>Observações</th>
                         <th class="text-end pe-4">Ações</th>
                     </tr>
                 </thead>
@@ -137,6 +138,9 @@
                             <span class="status-badge status-{{ c.status }}">
                                 {{ c.status|capitalize }}
                             </span>
+                        </td>
+                        <td>
+                            {{ c.obs[:40] }}{% if c.obs and c.obs|length > 40 %}...{% elif not c.obs %}-{% endif %}
                         </td>
                         <td class="text-end pe-4">
                             <div class="btn-group">
